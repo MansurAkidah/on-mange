@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Supper Suggestor</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--tx:#2b2620;--mu:#7a7064;--ac:#c2571a;--ac2:#fbe9dc;--bd:#e8dfd2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1815;--card:#26221e;--tx:#f1ebe2;--mu:#a69b8c;--ac:#f0894a;--ac2:#3a2a1f;--bd:#3a342d}}
+:root[data-theme="dark"]{--bg:#1b1815;--card:#26221e;--tx:#f1ebe2;--mu:#a69b8c;--ac:#f0894a;--ac2:#3a2a1f;--bd:#3a342d}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+main{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1.1rem;margin:28px 0 10px}
+.sub{color:var(--mu);margin:0 0 16px;font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px 16px}
+.tonight{background:var(--ac2);border-color:var(--ac)}
+.lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mu)}
+.big{font-size:1.35rem;font-weight:700;margin:4px 0}
+.note{font-size:.85rem;color:var(--mu)}
+.grid{display:grid;gap:8px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--bd);border-radius:12px}
+.row.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.row b{min-width:44px}.row span{text-align:right}
+.tag{display:inline-block;font-size:.7rem;background:var(--ac2);color:var(--ac);border-radius:99px;padding:1px 8px;margin-left:6px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+select,button{font:inherit;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:9px 12px}
+button.p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600;cursor:pointer}
+button.s{cursor:pointer}
+.acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.acts button{flex:1;min-width:120px}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.85rem}td,th{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left}
+label{font-size:.9rem}
+</style></head><body><main>
+<h1>🍲 Supper Suggestor</h1>
+<p class="sub">Weekly menu first. Not feeling it? Use the randomizer below.</p>
+
+<div id="tonight" class="card tonight"></div>
+
+<h2>This week's supper menu</h2>
+<div id="week" class="grid"></div>
+
+<h2>Randomizer</h2>
+<div class="card">
+  <div class="ctl">
+    <label>Day: <select id="day"></select></label>
+    <label><input type="checkbox" id="avoid" checked> Avoid sister's work meal that day</label>
+  </div>
+  <div id="sugg" class="note">Press the button to get a suggestion.</div>
+  <div class="acts">
+    <button class="p" id="next">🎲 Suggest one</button>
+    <button class="s" id="pick" disabled>✅ We'll have this</button>
+  </div>
+  <p class="note" id="count"></p>
+</div>
+
+<h2>Sister's work meals (not repeated at supper)</h2>
+<div class="card tbl"><table>
+<tr><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th></tr>
+<tr><td>Chapati + beans</td><td>Rice + beans</td><td>Ugali + cabbage</td><td>Pilau</td><td>Chips</td></tr>
+</table></div>
+</main>
+<script>
+const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const MAINS={beef:"beef stew",chicken:"chicken stew",fish:"fish stew",omena:"omena in tomato sauce",eggs:"egg curry",beans:"beans stew",grams:"green grams (ndengu)",mince:"minced beef sauce",milk:"fermented milk (mala)",veg:"veggie & egg sauce"};
+const TIPS={beef:"Boil till tender, then simmer with onions, tomatoes and garlic.",chicken:"Brown with onions, add tomatoes, ginger-garlic and spices.",fish:"Fry lightly, then simmer in tomato-onion sauce with lemon.",omena:"Rinse, fry with onions, then add tomatoes.",eggs:"Boil eggs, add to a tomato-onion curry.",beans:"Pre-cook in bulk; fry onions, tomatoes, garlic, then simmer.",grams:"Boil till soft, finish with onions, tomatoes and coconut or milk if you like.",mince:"Fry onions, garlic, mince; add tomatoes and simmer.",milk:"Serve cold, a great light supper.",veg:"Scramble eggs into fried onions, tomatoes and greens."};
+const SIDES={sukuma:"sukuma wiki",cabbage:"cabbage",spinach:"spinach",kach:"kachumbari"};
+const G=["sukuma","cabbage","spinach"];
+const CARBS={
+ ugali:{n:"Ugali",m:["beef","chicken","fish","omena","eggs","beans","grams"],s:G},
+ rice:{n:"Rice",m:["beef","chicken","fish","eggs","beans","grams"],s:["kach",...G]},
+ chapati:{n:"Chapati",m:["beans","grams","chicken","beef","eggs"],s:["kach",...G]},
+ spag:{n:"Spaghetti",m:["mince","chicken","veg"],s:["kach"]},
+ potato:{n:"Boiled/mashed potatoes",m:["beef","chicken","fish","eggs","beans"],s:["kach",...G]},
+ matoke:{n:"Matoke (cooking bananas)",m:["beef","fish","beans","chicken"],s:G},
+ sweet:{n:"Sweet potatoes",m:["milk","eggs","veg"],s:[]}
+};
+// Sister's work meals per day (index 0=Mon). A block matches when all its keys match.
+const BLOCKS=[{c:"chapati",m:"beans"},{c:"rice",m:"beans"},{c:"ugali",s:"cabbage"},{c:"rice",m:"beef"},{c:"potato"}];
+const MENU=[
+ {c:"spag",m:"mince",s:"kach"},{c:"chapati",m:"chicken",s:"kach"},{c:"rice",m:"grams",s:"spinach"},
+ {c:"ugali",m:"fish",s:"sukuma"},{c:"matoke",m:"beef",s:"sukuma"},{c:"rice",m:"eggs",s:"kach"},{c:"chapati",m:"chicken",s:"sukuma"}];
+const fmt=x=>`${CARBS[x.c].n} + ${MAINS[x.m]}`+(x.s?` + ${SIDES[x.s]}`:"");
+const blocked=(x,d)=>{if(d>4)return false;const b=BLOCKS[d];return Object.keys(b).every(k=>x[k]===b[k]);};
+const todayIdx=(new Date().getDay()+6)%7;
+
+// Tonight
+const t=MENU[todayIdx];
+document.getElementById("tonight").innerHTML=`<div class="lbl">Tonight · ${DAYS[todayIdx]}</div><div class="big">${fmt(t)}</div><div class="note">${TIPS[t.m]}</div>`;
+// Week
+document.getElementById("week").innerHTML=MENU.map((x,i)=>`<div class="row ${i===todayIdx?"today":""}"><b>${DAYS[i]}</b><span>${fmt(x)}${i===todayIdx?'<span class="tag">today</span>':""}</span></div>`).join("");
+// Day select
+const sel=document.getElementById("day");
+sel.innerHTML=DAYS.map((d,i)=>`<option value="${i}" ${i===todayIdx?"selected":""}>${d}</option>`).join("");
+
+// Randomizer
+let pool=[],pos=0,cur=null,seen=0;
+function build(){
+ const d=+sel.value,av=document.getElementById("avoid").checked,all=[];
+ for(const c in CARBS)for(const m of CARBS[c].m){
+  const sides=CARBS[c].s.length?CARBS[c].s:[null];
+  for(const s of sides){const x={c,m,s};if(!(av&&blocked(x,d)))all.push(x);}
+ }
+ for(let i=all.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[all[i],all[j]]=[all[j],all[i]];}
+ // keep carbs varied: don't repeat the same carb twice in a row where possible
+ pool=[];while(all.length){let k=all.findIndex(x=>!pool.length||x.c!==pool[pool.length-1].c);if(k<0)k=0;pool.push(all.splice(k,1)[0]);}
+ pos=0;seen=0;
+}
+function show(){
+ const out=document.getElementById("sugg"),pick=document.getElementById("pick");
+ if(pos>=pool.length)build();
+ cur=pool[pos++];seen++;
+ out.className="";out.innerHTML=`<div class="lbl">Suggestion #${seen}</div><div class="big">${fmt(cur)}</div><div class="note">${TIPS[cur.m]}</div>`;
+ pick.disabled=false;pick.textContent="✅ We'll have this";
+ document.getElementById("next").textContent="🎲 Not feeling it — next";
+ document.getElementById("count").textContent=`${pool.length-pos} more unseen options for this day.`;
+}
+document.getElementById("next").onclick=show;
+document.getElementById("pick").onclick=()=>{
+ document.getElementById("sugg").innerHTML=`<div class="lbl">Decided!</div><div class="big">${fmt(cur)}</div><div class="note">${TIPS[cur.m]}</div>`;
+ document.getElementById("pick").disabled=true;
+ document.getElementById("next").textContent="🎲 Suggest another";
+ document.getElementById("count").textContent="";
+};
+sel.onchange=document.getElementById("avoid").onchange=()=>{build();document.getElementById("sugg").innerHTML="Press the button to get a suggestion.";document.getElementById("pick").disabled=true;document.getElementById("count").textContent="";};
+build();
+</script></body></html>
