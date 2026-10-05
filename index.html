@@ -48,7 +48,7 @@ label{font-size:.9rem}
   <div id="sugg" class="note">Press the button to get a suggestion.</div>
   <div class="acts">
     <button class="p" id="next">🎲 Suggest one</button>
-    <button class="s" id="pick" disabled>✅ We'll have this</button>
+    <button class="s" id="pick" disabled>📤 Share on WhatsApp</button>
   </div>
   <p class="note" id="count"></p>
 </div>
@@ -110,16 +110,34 @@ function show(){
  if(pos>=pool.length)build();
  cur=pool[pos++];seen++;
  out.className="";out.innerHTML=`<div class="lbl">Suggestion #${seen}</div><div class="big">${fmt(cur)}</div><div class="note">${TIPS[cur.m]}</div>`;
- pick.disabled=false;pick.textContent="✅ We'll have this";
+ pick.disabled=false;
  document.getElementById("next").textContent="🎲 Not feeling it — next";
  document.getElementById("count").textContent=`${pool.length-pos} more unseen options for this day.`;
 }
 document.getElementById("next").onclick=show;
-document.getElementById("pick").onclick=()=>{
- document.getElementById("sugg").innerHTML=`<div class="lbl">Decided!</div><div class="big">${fmt(cur)}</div><div class="note">${TIPS[cur.m]}</div>`;
- document.getElementById("pick").disabled=true;
- document.getElementById("next").textContent="🎲 Suggest another";
- document.getElementById("count").textContent="";
+function wrap(ctx,text,x,y,w,lh){const words=text.split(" ");let line="";for(const wd of words){const t=line?line+" "+wd:wd;if(ctx.measureText(t).width>w&&line){ctx.fillText(line,x,y);line=wd;y+=lh;}else line=t;}ctx.fillText(line,x,y);return y+lh;}
+function makeImage(){return new Promise(res=>{try{
+ const c=document.createElement("canvas");c.width=900;c.height=560;const g=c.getContext("2d");
+ g.fillStyle="#fbe9dc";g.fillRect(0,0,900,560);
+ g.fillStyle="#c2571a";g.fillRect(0,0,900,14);
+ const ff='system-ui,-apple-system,"Segoe UI",Arial,sans-serif';
+ g.fillStyle="#7a7064";g.font="600 26px "+ff;g.fillText("🍲 SUPPER IDEA · "+DAYS[+sel.value].toUpperCase(),50,80);
+ g.fillStyle="#2b2620";g.font="700 50px "+ff;let y=wrap(g,fmt(cur),50,170,800,64);
+ g.fillStyle="#7a7064";g.font="28px "+ff;wrap(g,TIPS[cur.m],50,y+20,800,40);
+ g.fillStyle="#c2571a";g.font="600 24px "+ff;g.fillText("Supper Suggestor",50,520);
+ c.toBlob(b=>res(b),"image/png");}catch(e){res(null);}});}
+document.getElementById("pick").onclick=async()=>{
+ if(!cur)return;
+ const text=`🍲 Supper idea for ${DAYS[+sel.value]}: ${fmt(cur)}\n${TIPS[cur.m]}`;
+ const blob=await makeImage();
+ try{
+  if(blob&&navigator.canShare){
+   const file=new File([blob],"supper-idea.png",{type:"image/png"});
+   if(navigator.canShare({files:[file]})){await navigator.share({files:[file],text});return;}
+  }
+ }catch(e){if(e&&e.name==="AbortError")return;}
+ // Fallback: text via WhatsApp (WhatsApp lets you choose the contact)
+ window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener");
 };
 sel.onchange=document.getElementById("avoid").onchange=()=>{build();document.getElementById("sugg").innerHTML="Press the button to get a suggestion.";document.getElementById("pick").disabled=true;document.getElementById("count").textContent="";};
 build();
