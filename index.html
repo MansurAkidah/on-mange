@@ -30,6 +30,7 @@ button.s{cursor:pointer}
 .acts button{flex:1;min-width:120px}
 .tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.85rem}td,th{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left}
 label{font-size:.9rem}
+input[type=text]{display:block;width:100%;margin-top:8px;font:inherit;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:10px 12px}
 </style></head><body><main>
 <h1>🍲 Supper Suggestor</h1>
 <p class="sub">Weekly menu first. Not feeling it? Use the randomizer below.</p>
@@ -49,6 +50,13 @@ label{font-size:.9rem}
   <div class="acts">
     <button class="p" id="next">🎲 Suggest one</button>
     <button class="s" id="pick" disabled>📤 Share on WhatsApp</button>
+    <button class="s" id="own">✍️ Suggest my own</button>
+  </div>
+  <div id="ownbox" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">
+    <div class="lbl">Your own suggestion</div>
+    <input id="ownmeal" type="text" maxlength="120" placeholder="e.g. Pilau with kachumbari">
+    <input id="ownnote" type="text" maxlength="160" placeholder="Optional note, e.g. I'll cook, please buy tomatoes">
+    <div class="acts"><button class="p" id="ownshare" disabled>📤 Share on WhatsApp</button></div>
   </div>
   <p class="note" id="count"></p>
 </div>
@@ -116,20 +124,24 @@ function show(){
 }
 document.getElementById("next").onclick=show;
 function wrap(ctx,text,x,y,w,lh){const words=text.split(" ");let line="";for(const wd of words){const t=line?line+" "+wd:wd;if(ctx.measureText(t).width>w&&line){ctx.fillText(line,x,y);line=wd;y+=lh;}else line=t;}ctx.fillText(line,x,y);return y+lh;}
-function makeImage(){return new Promise(res=>{try{
+function makeImage(title,tip){return new Promise(res=>{try{
  const c=document.createElement("canvas");c.width=900;c.height=560;const g=c.getContext("2d");
  g.fillStyle="#fbe9dc";g.fillRect(0,0,900,560);
  g.fillStyle="#c2571a";g.fillRect(0,0,900,14);
  const ff='system-ui,-apple-system,"Segoe UI",Arial,sans-serif';
  g.fillStyle="#7a7064";g.font="600 26px "+ff;g.fillText("🍲 SUPPER IDEA · "+DAYS[+sel.value].toUpperCase(),50,80);
- g.fillStyle="#2b2620";g.font="700 50px "+ff;let y=wrap(g,fmt(cur),50,170,800,64);
- g.fillStyle="#7a7064";g.font="28px "+ff;wrap(g,TIPS[cur.m],50,y+20,800,40);
+ g.fillStyle="#2b2620";g.font="700 50px "+ff;let y=wrap(g,title,50,170,800,64);
+ g.fillStyle="#7a7064";g.font="28px "+ff;if(tip)wrap(g,tip,50,y+20,800,40);
  g.fillStyle="#c2571a";g.font="600 24px "+ff;g.fillText("Supper Suggestor",50,520);
  c.toBlob(b=>res(b),"image/png");}catch(e){res(null);}});}
-document.getElementById("pick").onclick=async()=>{
- if(!cur)return;
- const text=`🍲 Supper idea for ${DAYS[+sel.value]}: ${fmt(cur)}\n${TIPS[cur.m]}`;
- const blob=await makeImage();
+document.getElementById("pick").onclick=()=>{if(cur)shareIt(fmt(cur),TIPS[cur.m]);};
+const ownMeal=document.getElementById("ownmeal"),ownNote=document.getElementById("ownnote"),ownShare=document.getElementById("ownshare");
+document.getElementById("own").onclick=()=>{const b=document.getElementById("ownbox");b.hidden=!b.hidden;if(!b.hidden)ownMeal.focus();};
+ownMeal.oninput=()=>{ownShare.disabled=!ownMeal.value.trim();};
+ownShare.onclick=()=>{const m=ownMeal.value.trim();if(m)shareIt(m,ownNote.value.trim());};
+async function shareIt(title,tip){
+ const text=`🍲 Supper idea for ${DAYS[+sel.value]}: ${title}`+(tip?`\n${tip}`:"");
+ const blob=await makeImage(title,tip);
  try{
   if(blob&&navigator.canShare){
    const file=new File([blob],"supper-idea.png",{type:"image/png"});
